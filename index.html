@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>НОЧНАЯ СМЕНА</title>
+    <style>
+        /* --- CSS: RESET & BASE --- */
+        :root {
+            --c-bg: #0a1020;
+            --c-text: #ffb347;
+            --c-ui-bg: rgba(10, 16, 32, 0.9);
+            --c-accent: #ff7a3d;
+            --font-main: system-ui, -apple-system, sans-serif;
+            --font-mono: monospace;
+        }
+        * { box-sizing: border-box; touch-action: none; user-select: none; -webkit-user-select: none; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--c-bg); color: var(--c-text); font-family: var(--font-main); }
+        
+        /* --- CANVAS LAYERS --- */
+        #gameCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+        
+        /* --- UI SYSTEM --- */
+        .ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        .ui-layer > * { pointer-events: auto; }
+        .hidden { display: none !important; opacity: 0; pointer-events: none; }
+        
+        /* MENU */
+        #menuUI { text-align: center; background: radial-gradient(circle at center, #1a2436 0%, #0a1020 100%); }
+        .logo { font-size: 3rem; font-weight: bold; color: var(--c-accent); text-shadow: 0 0 10px var(--c-accent); margin-bottom: 1rem; letter-spacing: 2px; }
+        .subtitle { font-family: var(--font-mono); font-size: 0.9rem; color: #7fd8e8; margin-bottom: 2rem; opacity: 0.8; }
+        .btn { background: transparent; border: 1px solid var(--c-text); color: var(--c-text); padding: 12px 24px; font-size: 1.1rem; margin: 8px; cursor: pointer; transition: all 0.2s; font-family: var(--font-mono); text-transform: uppercase; }
+        .btn:hover { background: var(--c-text); color: var(--c-bg); box-shadow: 0 0 15px var(--c-text); }
+        .build-tag { position: absolute; bottom: 10px; right: 10px; font-family: var(--font-mono); font-size: 0.7rem; opacity: 0.5; }
+
+        /* HUD */
+        #hudUI { justify-content: space-between; align-items: flex-start; padding: 10px; pointer-events: none; }
+        .bar-container { width: 200px; height: 10px; background: rgba(0,0,0,0.5); border: 1px solid #333; margin-bottom: 5px; position: relative; }
+        .bar-fill { height: 100%; width: 100%; transition: width 0.2s; }
+        #hpBar .bar-fill { background: #e05548; }
+        #fuelBar .bar-fill { background: #ff7a3d; }
+        .bar-label { position: absolute; top: -18px; left: 0; font-size: 0.8rem; font-family: var(--font-mono); color: #fff; text-shadow: 1px 1px 0 #000; }
+        
+        /* CONTROLS (MOBILE) */
+        #controlsUI { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 15px; pointer-events: none; }
+        .ctrl-btn { width: 60px; height: 60px; border-radius: 50%; background: rgba(255, 179, 71, 0.2); border: 2px solid var(--c-accent); color: #fff; font-weight: bold; font-size: 1.2rem; display: flex; justify-content: center; align-items: center; pointer-events: auto; backdrop-filter: blur(4px); }
+        .ctrl-btn:active { background: var(--c-accent); transform: scale(0.95); }
+        #brightBtn { width: 70px; height: 70px; border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.3); }
+
+        /* DIALOGUE */
+        #dialogueUI { position: absolute; bottom: 0; left: 0; width: 100%; padding: 20px; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); pointer-events: auto; display: flex; flex-direction: column; align-items: center; }
+        .dlg-box { max-width: 600px; background: rgba(10, 16, 32, 0.95); border: 1px solid var(--c-text); padding: 15px; border-radius: 4px; position: relative; }
+        .dlg-name { color: var(--c-accent); font-weight: bold; margin-bottom: 5px; font-family: var(--font-mono); font-size: 0.9rem; }
+        .dlg-text { font-size: 1rem; line-height: 1.4; color: #eee; }
+        .dlg-next { position: absolute; bottom: 10px; right: 15px; animation: blink 1s infinite; cursor: pointer; color: var(--c-text); font-size: 0.8rem; }
+
+        /* ERROR OVERLAY */
+        #errorOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #500; color: #fff; z-index: 9999; padding: 20px; font-family: monospace; overflow: auto; display: none; }
+        
+        @keyframes blink { 50% { opacity: 0; } }
+        
+        /* HUB SPECIFIC */
+        .hub-hint { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.5); font-size: 0.9rem; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<!-- CANVAS -->
+<canvas id="gameCanvas"></canvas>
+
+<!-- UI LAYERS -->
+<div id="menuUI" class="ui-layer">
+    <div class="logo">НОЧНАЯ СМЕНА</div>
+    <div class="subtitle">ГОРОД КОПОТЬ · УЧАСТОК 4</div>
+    <button class="btn" id="startBtn">НАЧАТЬ СМЕНУ</button>
+    <button class="btn" id="prologueBtn">ПРОЛОГ</button>
+    <div class="build-tag">BUILD 0.1.0</div>
+</div>
+
+<div id="introUI" class="ui-layer hidden">
+    <!-- Dialogue handled by JS overlay -->
+</div>
+
+<div id="hubUI" class="ui-layer hidden">
+    <div style="position:absolute; top:10px; left:10px; font-family:var(--font-mono); color:var(--c-accent);">КОТЕЛЬНАЯ «ИСКРА»</div>
+    <div class="hub-hint">Подойди к двери справа, чтобы выйти в ночь</div>
+    <button class="btn" style="position:absolute; bottom:20px; right:20px;" id="hubExitBtn">ВЫЙТИ В РЕЙД</button>
+</div>
+
+<div id="sortieUI" class="ui-layer hidden">
+    <div id="hudUI" style="width:100%; height:100%;">
+        <div style="position:absolute; top:10px; left:10px;">
+            <div class="bar-container"><div class="bar-label">ЗДОРОВЬЕ</div><div id="hpBar" class="bar-fill"></div></div>
+            <div class="bar-container"><div class="bar-label">ТОПЛИВО</div><div id="fuelBar" class="bar-fill"></div></div>
+        </div>
+        <div id="controlsUI">
+            <div class="ctrl-btn" id="brightBtn">ЯРЧЕ</div>
+        </div>
+    </div>
+</div>
+
+<div id="endUI" class="ui-layer hidden">
+    <div class="logo" style="font-size: 2rem;">СМЕНА ОКОНЧЕНА</div>
+    <div class="subtitle" id="endReason">Топливо иссякло</div>
+    <button class="btn" id="restartBtn">ВЕРНУТЬСЯ В БАЗУ</button>
+</div>
+
+<div id="dialogueUI" class="hidden">
+    <div class="dlg-box">
+        <div class="dlg-name" id="dlgName">???</div>
+        <div class="dlg-text" id="dlgText">...</div>
+        <div class="dlg-next" id="dlgNext">[ДАЛЕЕ]</div>
+    </div>
+</div>
+
+<div id="errorOverlay"></div>
+
+<script>
+/**
+ * НОЧНАЯ СМЕНА · BUILD 0.1
+ * МОДУЛЬНАЯ СТРУКТУРА ВНУТРИ ОДНОГО ФАЙЛА
+ */
+
+// --- GLOBAL CONSTANTS & STATE ---
+const G = {
+    state: 'menu', // menu, intro, hub, sortie, end
+    width: 0, height: 0,
+    ctx: null,
+    lastTime: 0,
+    assets: {}, // Placeholder for future sprites
+    build: "0.1.0"
+};
+
+const C = { // Colors
+    bg: '#0a1020',
+    amber: '#ffb347',
+    fire: '#ff7a3d',
+    steel: '#5aa7c7',
+    dark: '#1a2436',
+    hp: '#e05548',
+    white: '#fff3d6'
+};
+
+const S = { // Game State Data
+    hp: 100, maxHp: 100,
+    fuel: 100, maxFuel: 100,
+    lightRadius: 150,
+    lightIntensity: 1.0,
+    burst: false,
+    player: { x: 0, y: 0, angle: 0, speed: 150 },
+    camera: { x: 0, y: 0 },
+    enemies: [],
+    particles: [],
+    input: { x: 0, y: 0, active: false, aimX: 0, aimY: 0 }
+};
+
+// --- MODULE: UTILS ---
+const U = {
+    rand: (min, max) => Math.random() * (max - min) + min,
+    dist: (x1, y1, x2, y2) => Math.hypot(x2 - x1, y2 - y1),
+    clamp: (v, min, max) => Math.max(min, Math.min(max, v)),
+    log: (msg) => console.log(`[NS:${G.build}] ${msg}`)
+};
+
+// --- MODULE: INPUT ---
+const Input = {
+    keys: {},
+    mouse: { x: 0, y: 0, down: false },
+    touchZoneMove: null,
+    touchZoneAim: null,
+    
+    init() {
+        window.addEventListener('keydown', e => this.keys[e.code] = true);
+        window.addEventListener('keyup', e => this.keys[e.code] = false);
+        
+        // Mouse
+        window.addEventListener('mousemove', e => {
+            this.mouse.x = e.clientX;
+            this.mouse.y = e.clientY;
+            if (G.state === 'sortie') this.updateAim(e.clientX, e.clientY);
+        });
+        window.addEventListener('mousedown', () => { 
+            this.mouse.down = true; 
+            if(G.state === 'sortie') S.burst = true;
+        });
+        window.addEventListener('mouseup', () => { 
+            this.mouse.down = false; 
+            if(G.state === 'sortie') S.burst = false;
+        });
+
+        // Touch (Mobile)
+        const cvs = document.getElementById('gameCanvas');
+        cvs.addEventListener('touchstart', e => this.handleTouch(e), {passive: false});
+        cvs.addEventListener('touchmove', e => this.handleTouch(e), {passive: false});
+        cvs.addEventListener('touchend', e => this.handleTouchEnd(e), {passive: false});
+
+        // UI Buttons
+        document.getElementById('brightBtn').addEventListener('touchstart', (e) => { e.preventDefault(); S.burst = true; });
+        document.getElementById('brightBtn').addEventListener('touchend', (e) => { e.preventDefault(); S.burst = false; });
+        document.getElementById('brightBtn').addEventListener('mousedown', () => S.burst = true);
+        document.getElementById('brightBtn').addEventListener('mouseup', () => S.burst = false);
+    },
+
+    handleTouch(e) {
+        e.preventDefault();
+        const w = window.innerWidth;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const t = e.changedTouches[i];
+            if (t.clientX < w * 0.4) {
+                // Move Zone (Left)
+                this.touchZoneMove = t.identifier;
+                const dx = t.clientX - w * 0.2; // Center of left zone approx
+                const dy = t.clientY - window.innerHeight / 2;
+                S.input.x = U.clamp(dx / 50, -1, 1);
+                S.input.y = U.clamp(dy / 50, -1, 1);
+            } else {
+                // Aim Zone (Right)
+                this.touchZoneAim = t.identifier;
+                this.updateAim(t.clientX, t.clientY);
+            }
+        }
+    },
+
+    handleTouchEnd(e) {
+        e.preventDefault();
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === this.touchZoneMove) {
+                this.touchZoneMove = null;
+                S.input.x = 0; S.input.y = 0;
+            }
+            if (e.changedTouches[i].identifier === this.touchZoneAim) {
+                this.touchZoneAim = null;
+                // Keep last aim or stop? Let's keep last aim for "freeze" mechanic
+            }
+        }
+    },
+
+    updateAim(x, y) {
+        // Calculate angle from center screen to touch/mouse
+        const cx = G.width / 2;
+        const cy = G.height / 2;
+        S.player.angle = Math.atan2(y - cy, x - cx);
+    },
+
+    getAxis() {
+        let x = 0, y = 0;
+        if (this.keys['KeyW'] || this.keys['ArrowUp']) y = -1;
+        if (this.keys['KeyS'] || this.keys['ArrowDown']) y = 1;
+        if (this.keys['KeyA'] || this.keys['ArrowLeft']) x = -1;
+        if (this.keys['KeyD'] || this.keys['ArrowRight']) x = 1;
+        
+        if (this.touchZoneMove !== null) {
+            x = S.input.x; y = S.input.y;
+        } else if (x !== 0 || y !== 0) {
+            // Normalize keyboard
+            const len = Math.hypot(x, y);
+            if (len > 1) { x /= len; y /= len; }
+        }
+        return { x, y };
+    }
+};
+
+// --- MODULE: UI MANAGER ---
+const UI = {
+    els: {},
+    init() {
+        this.els = {
+            menu: document.getElementById('menuUI'),
+            intro: document.getElementById('introUI'),
+            hub: document.getElementById('hubUI'),
+            sortie: document.getElementById('sortieUI'),
+            end: document.getElementById('endUI'),
+            dialogue: document.getElementById('dialogueUI'),
+            dlgName: document.getElementById('dlgName'),
+            dlgText: document.getElementById('dlgText'),
+            hpBar: document.getElementById('hpBar'),
+            fuelBar: document.getElementById('fuelBar')
+        };
+        
+        // Bind Buttons
+        document.getElementById('startBtn').onclick = () => Intro.start();
+        document.getElementById('prologueBtn').onclick = () => Intro.start();
+        document.getElementById('hubExitBtn').onclick = () => Sortie.start();
+        document.getElementById('restartBtn').onclick = () => Hub.start();
+        document.getElementById('dlgNext').onclick = () => Intro.next();
+        
+        this.set('menu');
+    },
+    
+    set(state) {
+        Object.values(this.els).forEach(el => {
+            if(el && el.id !== 'dialogueUI') el.classList.add('hidden');
+        });
+        if (this.els[state]) this.els[state].classList.remove('hidden');
+        G.state = state;
+        U.log(`State -> ${state}`);
+    },
+
+    showDialog(name, text, cb) {
+        this.els.dlgName.innerText = name;
+        this.els.dlgText.innerText = text;
+        this.els.dialogue.classList.remove('hidden');
+        this.dialogueCb = cb;
+    },
+
+    hideDialog() {
+        this.els.dialogue.classList.add('hidden');
+        if (this.dialogueCb) this.dialogueCb();
+    },
+
+    updateHUD() {
+        this.els.hpBar.style.width = `${(S.hp / S.maxHp) * 100}%`;
+        this.els.fuelBar.style.width = `${(S.fuel / S.maxFuel) * 100}%`;
+    }
+};
+
+// --- MODULE: SPRITES (Procedural) ---
+const Sprites = {
+    drawPlayer(ctx, x, y, angle) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        // Body
+        ctx.fillStyle = '#334';
+        ctx.fillRect(-6, -6, 12, 12);
+        // Cloak
+        ctx.fillStyle = '#2a2a3a';
+        ctx.beginPath();
+        ctx.moveTo(-4, 0); ctx.lineTo(-10, 8); ctx.lineTo(10, 8); ctx.lineTo(4, 0);
+        ctx.fill();
+        // Lamp
+        ctx.fillStyle = C.amber;
+        ctx.beginPath(); ctx.arc(6, 0, 3, 0, Math.PI*2); ctx.fill();
+        ctx.restore();
+    },
+    
+    drawEnemy(ctx, e) {
+        ctx.save();
+        ctx.translate(e.x, e.y);
+        // Glow eyes if in dark (simple logic: always draw eyes)
+        ctx.fillStyle = '#fff';
+        ctx.beginPath(); ctx.arc(-2, -2, 1.5, 0, Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(2, -2, 1.5, 0, Math.PI*2); ctx.fill();
+        
+        // Body (Placeholder until assets)
+        ctx.fillStyle = e.type === 'smol' ? '#556' : '#433';
+        ctx.beginPath();
+        ctx.arc(0, 0, e.radius, 0, Math.PI*2);
+        ctx.fill();
+        
+        // Health bar
+        if (e.hp < e.maxHp) {
+            ctx.fillStyle = 'red';
+            ctx.fillRect(-10, -15, 20, 3);
+            ctx.fillStyle = '#0f0';
+            ctx.fillRect(-10, -15, 20 * (e.hp/e.maxHp), 3);
+        }
+        ctx.restore();
+    }
+};
+
+// --- MODULE: LIGHT SYSTEM ---
+const Light = {
+    // Draws the darkness mask with a hole for the player's light
+    render(ctx) {
+        const px = G.width/2 - S.camera.x;
+        const py = G.height/2 - S.camera.y;
+        
+        // Create darkness layer
+        // We use 'destination-out' to cut the light shape out of a black rect
+        // But since we have a background, we draw a black rect over everything, then cut holes.
+        
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.fillStyle = 'rgba(10, 16, 32, 0.95)'; // The Fog
+        ctx.fillRect(0, 0, G.width, G.height);
+        
+        ctx.globalCompositeOperation = 'destination-out';
+        
+        // Player Light Cone
+        const radius = S.burst ? S.lightRadius * 1.5 : S.lightRadius;
+        const angle = S.player.angle;
+        const coneAngle = S.burst ? Math.PI / 1.5 : Math.PI / 3;
+        
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.arc(px, py, radius, angle - coneAngle/2, angle + coneAngle/2);
+        ctx.closePath();
+        ctx.fill();
+        
+        // Small circle around player (always visible)
+        ctx.beginPath();
+        ctx.arc(px, py, 20, 0, Math.PI*2);
+        ctx.fill();
+        
+        ctx.restore();
+        
+        // Draw Light Bloom (Additive)
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const grad = ctx.createRadialGradient(px, py, 5, px, py, radius);
+        grad.addColorStop(0, S.burst ? 'rgba(255, 200, 150, 0.4)' : 'rgba(255, 179, 71, 0.2)');
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.arc(px, py, radius, angle - coneAngle/2, angle + coneAngle/2);
+        ctx.fill();
+        ctx.restore();
+    },
+    
+    checkVisibility(obj) {
+        // Simple distance + angle check relative to player screen pos
+        const sx = (obj.x - S.camera.x) + G.width/2;
+        const sy = (obj.y - S.camera.y) + G.height/2;
+        
+        const dx = sx - G.width/2;
+        const dy = sy - G.height/2;
+        const dist = Math.hypot(dx, dy);
+        const angleToObj = Math.atan2(dy, dx);
+        
+        let angleDiff = angleToObj - S.player.angle;
+        // Normalize angle
+        while (angleDiff <= -Math.PI) angleDiff += Math.PI*2;
+        while (angleDiff > Math.PI) angleDiff -= Math.PI*2;
+        
+        const cone = S.burst ? Math.PI / 1.5 : Math.PI / 3;
+        const range = S.burst ? S.lightRadius * 1.5 : S.lightRadius;
+        
+        return (dist < range && Math.abs(angleDiff) < cone/2);
+    }
+};
+
+// --- MODULE: SORTIE (GAMEPLAY) ---
+const Sortie = {
+    timer: 0,
+    
+    start() {
+        S.hp = S.maxHp;
+        S.fuel = S.maxFuel;
+        S.player.x = 0; S.player.y = 0;
+        S.enemies = [];
+        S.particles = [];
+        UI.set('sortie');
+        this.timer = 0;
+        // Spawn initial enemies
+        for(let i=0; i<5; i++) this.spawnEnemy();
+    },
+    
+    spawnEnemy() {
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 400 + Math.random() * 400;
+        S.enemies.push({
+            x: S.player.x + Math.cos(angle) * dist,
+            y: S.player.y + Math.sin(angle) * dist,
+            hp: 30, maxHp: 30,
+            speed: 60 + Math.random() * 40,
+            type: 'smol',
+            radius: 8
+        });
+    },
+    
+    update(dt) {
+        // Fuel Drain
+        const drainRate = S.burst ? 15 : 3;
+        S.fuel -= drainRate * dt;
+        if (S.fuel <= 0) {
+            S.fuel = 0;
+            End.trigger("Топливо иссякло. Тьма поглотила тебя.");
+            return;
+        }
+        
+        // Player Move
+        const axis = Input.getAxis();
+        S.player.x += axis.x * S.player.speed * dt;
+        S.player.y += axis.y * S.player.speed * dt;
+        
+        // Camera Follow
+        S.camera.x = S.player.x;
+        S.camera.y = S.player.y;
+        
+        // Enemies Logic
+        S.enemies.forEach((e, idx) => {
+            const dist = U.dist(S.player.x, S.player.y, e.x, e.y);
+            
+            // Move towards player
+            const angle = Math.atan2(S.player.y - e.y, S.player.x - e.x);
+            e.x += Math.cos(angle) * e.speed * dt;
+            e.y += Math.sin(angle) * e.speed * dt;
+            
+            // Collision with Player
+            if (dist < 15) {
+                S.hp -= 10 * dt;
+                if (S.hp <= 0) End.trigger("Вас разорвали Погасшие.");
+            }
+            
+            // Damage from Light
+            const visible = Light.checkVisibility(e);
+            if (visible) {
+                const dmg = (S.burst ? 40 : 15) * dt;
+                e.hp -= dmg;
+                // Pushback
+                e.x -= Math.cos(angle) * 50 * dt;
+                e.y -= Math.sin(angle) * 50 * dt;
+                
+                if (e.hp <= 0) {
+                    S.enemies.splice(idx, 1);
+                    this.spawnEnemy(); // Respawn to keep pressure
+                    // Add particle effect here later
+                }
+            }
+        });
+        
+        UI.updateHUD();
+    },
+    
+    render() {
+        const ctx = G.ctx;
+        ctx.fillStyle = C.bg;
+        ctx.fillRect(0, 0, G.width, G.height);
+        
+        // Draw World Grid (Floor)
+        ctx.save();
+        ctx.translate(G.width/2 - S.camera.x, G.height/2 - S.camera.y);
+        ctx.strokeStyle = '#1a2436';
+        ctx.lineWidth = 2;
+        const gridSize = 100;
+        const startX = Math.floor((S.camera.x - G.width/2) / gridSize) * gridSize;
+        const startY = Math.floor((S.camera.y - G.height/2) / gridSize) * gridSize;
+        
+        for (let x = startX; x < startX + G.width + gridSize; x += gridSize) {
+            ctx.beginPath(); ctx.moveTo(x, startY); ctx.lineTo(x, startY + G.height + gridSize); ctx.stroke();
+        }
+        for (let y = startY; y < startY + G.height + gridSize; y += gridSize) {
+            ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(startX + G.width + gridSize, y); ctx.stroke();
+        }
+        
+        // Draw Entities
+        Sprites.drawPlayer(ctx, 0, 0, S.player.angle); // Relative to camera center
+        
+        S.enemies.forEach(e => {
+            // Only draw if somewhat close to avoid drawing offscreen
+            if (U.dist(S.player.x, S.player.y, e.x, e.y) < 800) {
+                Sprites.drawEnemy(ctx, e);
+            }
+        });
+        
+        ctx.restore();
+        
+        // Apply Light/Fog
+        Light.render(ctx);
+    }
+};
+
+// --- MODULE: HUB ---
+const Hub = {
+    start() {
+        UI.set('hub');
+        S.player.x = -200; // Start left
+        S.camera.x = S.player.x;
+        S.camera.y = 0;
+        
+        // Auto walk to center
+        const walkInterval = setInterval(() => {
+            if (G.state !== 'hub') { clearInterval(walkInterval); return; }
+            if (S.player.x < 0) {
+                S.player.x += 100 * 0.016;
+                S.camera.x = S.player.x;
+            } else {
+                clearInterval(walkInterval);
+                // Show intro dialogue for Hub
+                setTimeout(() => {
+                    UI.showDialog("Дарья", "Слышал радиста? Котёл сегодня жрёт уголь, как в последний раз. Иди, пока светло.", () => {});
+                }, 500);
+            }
+        }, 16);
+    },
+    
+    update(dt) {
+        // Simple interaction logic could go here
+        // Check distance to door (x=400)
+        if (S.player.x > 350) {
+             // Highlight door hint
+        }
+    },
+    
+    render() {
+        const ctx = G.ctx;
+        ctx.fillStyle = '#1a1510'; // Warm dark
+        ctx.fillRect(0, 0, G.width, G.height);
+        
+        ctx.save();
+        ctx.translate(G.width/2 - S.camera.x, G.height/2);
+        
+        // Floor
+        ctx.fillStyle = '#2a2520';
+        ctx.fillRect(-500, 50, 1000, 200);
+        
+        // Boiler (Center)
+        ctx.fillStyle = '#333';
+        ctx.fillRect(-50, -50, 100, 100);
+        ctx.fillStyle = C.fire;
+        ctx.beginPath(); ctx.arc(0, 0, 20 + Math.random()*5, 0, Math.PI*2); ctx.fill(); // Flicker
+        
+        // Door (Right)
+        ctx.fillStyle = '#443322';
+        ctx.fillRect(350, -80, 60, 130);
+        ctx.fillStyle = C.amber; // Light from door
+        ctx.globalAlpha = 0.3;
+        ctx.fillRect(350, -80, 100, 130);
+        ctx.globalAlpha = 1.0;
+        
+        // NPCs
+        // Darya (Left)
+        ctx.fillStyle = '#556';
+        ctx.fillRect(-200, -20, 20, 40);
+        // Sveta (Bottom)
+        ctx.fillStyle = '#655';
+        ctx.fillRect(-50, 60, 15, 30);
+        
+        // Player
+        Sprites.drawPlayer(ctx, 0, 0, 0);
+        
+        ctx.restore();
+        
+        // No fog in Hub (or very little)
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.fillRect(0,0,G.width, G.height);
+    }
+};
+
+// --- MODULE: INTRO (PROLOGUE) ---
+const Intro = {
+    lines: [
+        { name: "", text: "Говорят, свет не греет мёртвых. Но мёртвые идут на свет." },
+        { name: "Дарья", text: "Слышал радиста? Котёл сегодня жрёт уголь, как в последний раз." },
+        { name: "Света", text: "Дядя Тихон! Смотри — я нарисовала лицо. Не знаю, чьё… но я его помню." },
+        { name: "ТИХОН", text: "Это лицо… Я видел его в свете — в последний миг, прежде чем всё погасло." },
+        { name: "", text: "ГОРОД КОПОТЬ ПАДАЕТ..." },
+        { name: "ДАРЬЯ", text: "Иди. Зажги сегодня хоть один фонарь. Им там, во тьме, очень темно." }
+    ],
+    idx: 0,
+    
+    start() {
+        this.idx = 0;
+        UI.set('intro');
+        this.showLine();
+    },
+    
+    showLine() {
+        if (this.idx >= this.lines.length) {
+            UI.hideDialog();
+            Hub.start();
+            return;
+        }
+        const line = this.lines[this.idx];
+        UI.showDialog(line.name, line.text, () => {});
+    },
+    
+    next() {
+        this.idx++;
+        this.showLine();
+    }
+};
+
+// --- MODULE: END SCREEN ---
+const End = {
+    trigger(reason) {
+        UI.set('end');
+        document.getElementById('endReason').innerText = reason;
+    }
+};
+
+// --- MODULE: RENDER LOOP ---
+const Render = {
+    loop(timestamp) {
+        const dt = Math.min((timestamp - G.lastTime) / 1000, 0.1);
+        G.lastTime = timestamp;
+        
+        try {
+            // Clear
+            G.ctx.clearRect(0, 0, G.width, G.height);
+            
+            // Update & Render based on State
+            if (G.state === 'hub') { Hub.update(dt); Hub.render(); }
+            else if (G.state === 'sortie') { Sortie.update(dt); Sortie.render(); }
+            else if (G.state === 'menu') {
+                // Static menu bg animation could go here
+                G.ctx.fillStyle = '#0a1020'; G.ctx.fillRect(0,0,G.width,G.height);
+            }
+            
+        } catch (e) {
+            console.error(e);
+            document.getElementById('errorOverlay').style.display = 'block';
+            document.getElementById('errorOverlay').innerText = e.stack;
+        }
+        
+        requestAnimationFrame(t => this.loop(t));
+    }
+};
+
+// --- INITIALIZATION ---
+window.onload = () => {
+    const cvs = document.getElementById('gameCanvas');
+    G.ctx = cvs.getContext('2d');
+    
+    const resize = () => {
+        G.width = window.innerWidth;
+        G.height = window.innerHeight;
+        cvs.width = G.width;
+        cvs.height = G.height;
+    };
+    window.addEventListener('resize', resize);
+    resize();
+    
+    U.log("Init System");
+    Input.init();
+    UI.init();
+    
+    U.log("Start Loop");
+    requestAnimationFrame(t => Render.loop(t));
+};
+
+// Error Handling
+window.onerror = (msg, url, line) => {
+    const ov = document.getElementById('errorOverlay');
+    ov.style.display = 'block';
+    ov.innerHTML = `<h1>CRITICAL ERROR</h1><p>${msg}</p><p>Line: ${line}</p>`;
+    return true;
+};
+
+</script>
+</body>
+</html>
