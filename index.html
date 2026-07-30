@@ -7,15 +7,23 @@
     <style>
         /* --- CSS: RESET & BASE --- */
         :root {
-            --c-bg: #0a1020;
-            --c-text: #ffb347;
-            --c-ui-bg: rgba(10, 16, 32, 0.9);
-            --c-accent: #ff7a3d;
+            /* Palette §27 */
+            --c-amber: #ffb347;
+            --c-amber-warm: #ffcf8a;
+            --c-fire: #ff7a3d;
+            --c-lamp-core: #fff3d6;
+            --c-steel: #5aa7c7;
+            --c-cyan: #7fd8e8;
+            --c-dark-base: #1a2436;
+            --c-dark-deep: #0a1020;
+            --c-shadow-violet: #2a1c3a;
+            --c-hp: #e05548;
+            
             --font-main: system-ui, -apple-system, sans-serif;
             --font-mono: monospace;
         }
         * { box-sizing: border-box; touch-action: none; user-select: none; -webkit-user-select: none; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--c-bg); color: var(--c-text); font-family: var(--font-main); }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: var(--c-dark-deep); color: var(--c-amber); font-family: var(--font-main); }
         
         /* --- CANVAS LAYERS --- */
         #gameCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; }
@@ -25,42 +33,319 @@
         .ui-layer > * { pointer-events: auto; }
         .hidden { display: none !important; opacity: 0; pointer-events: none; }
         
-        /* MENU */
-        #menuUI { text-align: center; background: radial-gradient(circle at center, #1a2436 0%, #0a1020 100%); }
-        .logo { font-size: 3rem; font-weight: bold; color: var(--c-accent); text-shadow: 0 0 10px var(--c-accent); margin-bottom: 1rem; letter-spacing: 2px; }
-        .subtitle { font-family: var(--font-mono); font-size: 0.9rem; color: #7fd8e8; margin-bottom: 2rem; opacity: 0.8; }
-        .btn { background: transparent; border: 1px solid var(--c-text); color: var(--c-text); padding: 12px 24px; font-size: 1.1rem; margin: 8px; cursor: pointer; transition: all 0.2s; font-family: var(--font-mono); text-transform: uppercase; }
-        .btn:hover { background: var(--c-text); color: var(--c-bg); box-shadow: 0 0 15px var(--c-text); }
-        .build-tag { position: absolute; bottom: 10px; right: 10px; font-family: var(--font-mono); font-size: 0.7rem; opacity: 0.5; }
+        /* MENU §26 */
+        #menuUI { 
+            text-align: left; 
+            background: radial-gradient(circle at 30% 50%, #1a2436 0%, #0a1020 70%, #0a1020 100%);
+            padding: 40px;
+            justify-content: flex-start;
+            align-items: flex-start;
+        }
+        .menu-indicator { 
+            font-family: var(--font-mono); 
+            font-size: 0.7rem; 
+            color: var(--c-cyan); 
+            opacity: 0.8; 
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+        .logo { 
+            font-size: 3.5rem; 
+            font-weight: bold; 
+            color: var(--c-amber); 
+            text-shadow: 0 0 20px rgba(255, 179, 71, 0.5); 
+            margin-bottom: 0.5rem; 
+            letter-spacing: 4px;
+        }
+        .subtitle { 
+            font-family: var(--font-mono); 
+            font-size: 0.9rem; 
+            color: var(--c-steel); 
+            margin-bottom: 3rem; 
+            opacity: 0.7; 
+            border-bottom: 1px solid var(--c-amber);
+            padding-bottom: 10px;
+            display: inline-block;
+        }
+        .menu-desc {
+            color: rgba(255,255,255,0.6);
+            font-size: 0.9rem;
+            max-width: 400px;
+            line-height: 1.5;
+            margin-bottom: 2rem;
+        }
+        .btn { 
+            background: transparent; 
+            border: 1px solid var(--c-amber); 
+            color: var(--c-amber); 
+            padding: 14px 28px; 
+            font-size: 1rem; 
+            margin: 6px 0; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+            font-family: var(--font-mono); 
+            text-transform: uppercase;
+            min-width: 200px;
+            text-align: left;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn:hover { 
+            background: var(--c-amber); 
+            color: var(--c-dark-deep); 
+            box-shadow: 0 0 20px rgba(255, 179, 71, 0.4);
+            transform: translateX(5px);
+        }
+        .btn-primary {
+            border-color: var(--c-lamp-core);
+            color: var(--c-lamp-core);
+            box-shadow: 0 0 10px rgba(255, 243, 214, 0.2);
+        }
+        .btn-primary:hover {
+            background: var(--c-lamp-core);
+        }
+        .build-tag { 
+            position: absolute; 
+            bottom: 15px; 
+            right: 20px; 
+            font-family: var(--font-mono); 
+            font-size: 0.7rem; 
+            opacity: 0.4; 
+        }
 
         /* HUD */
-        #hudUI { justify-content: space-between; align-items: flex-start; padding: 10px; pointer-events: none; }
-        .bar-container { width: 200px; height: 10px; background: rgba(0,0,0,0.5); border: 1px solid #333; margin-bottom: 5px; position: relative; }
-        .bar-fill { height: 100%; width: 100%; transition: width 0.2s; }
-        #hpBar .bar-fill { background: #e05548; }
-        #fuelBar .bar-fill { background: #ff7a3d; }
-        .bar-label { position: absolute; top: -18px; left: 0; font-size: 0.8rem; font-family: var(--font-mono); color: #fff; text-shadow: 1px 1px 0 #000; }
+        #hudUI { justify-content: space-between; align-items: flex-start; padding: 15px; pointer-events: none; }
+        .bar-container { 
+            width: 220px; 
+            height: 12px; 
+            background: rgba(10, 16, 32, 0.7); 
+            border: 1px solid rgba(255,255,255,0.2); 
+            margin-bottom: 8px; 
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        .bar-fill { height: 100%; width: 100%; transition: width 0.3s; }
+        #hpBar .bar-fill { background: linear-gradient(90deg, #e05548, #ff7a3d); }
+        #fuelBar .bar-fill { background: linear-gradient(90deg, #ff7a3d, #ffb347); }
+        .bar-label { 
+            position: absolute; 
+            top: -16px; 
+            left: 0; 
+            font-size: 0.75rem; 
+            font-family: var(--font-mono); 
+            color: var(--c-amber-warm); 
+            text-shadow: 1px 1px 0 #000; 
+            letter-spacing: 1px;
+        }
         
-        /* CONTROLS (MOBILE) */
-        #controlsUI { position: absolute; bottom: 20px; right: 20px; display: flex; gap: 15px; pointer-events: none; }
-        .ctrl-btn { width: 60px; height: 60px; border-radius: 50%; background: rgba(255, 179, 71, 0.2); border: 2px solid var(--c-accent); color: #fff; font-weight: bold; font-size: 1.2rem; display: flex; justify-content: center; align-items: center; pointer-events: auto; backdrop-filter: blur(4px); }
-        .ctrl-btn:active { background: var(--c-accent); transform: scale(0.95); }
-        #brightBtn { width: 70px; height: 70px; border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.3); }
+        /* CONTROLS (MOBILE) §11 */
+        #controlsUI { 
+            position: absolute; 
+            bottom: 30px; 
+            right: 30px; 
+            display: flex; 
+            gap: 20px; 
+            pointer-events: none;
+        }
+        .ctrl-btn { 
+            width: 64px; 
+            height: 64px; 
+            border-radius: 50%; 
+            background: rgba(255, 179, 71, 0.15); 
+            border: 2px solid var(--c-amber); 
+            color: var(--c-lamp-core); 
+            font-weight: bold; 
+            font-size: 1rem; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            pointer-events: auto; 
+            backdrop-filter: blur(4px);
+            transition: all 0.15s;
+            text-shadow: 0 0 5px var(--c-amber);
+        }
+        .ctrl-btn:active { 
+            background: var(--c-amber); 
+            transform: scale(0.92); 
+            box-shadow: 0 0 20px var(--c-amber);
+        }
+        #brightBtn { 
+            width: 76px; 
+            height: 76px; 
+            border-color: var(--c-lamp-core); 
+            box-shadow: 0 0 15px rgba(255, 243, 214, 0.3);
+            font-size: 1.1rem;
+        }
+        #brightBtn:active {
+            background: var(--c-lamp-core);
+            box-shadow: 0 0 30px rgba(255, 243, 214, 0.6);
+        }
 
-        /* DIALOGUE */
-        #dialogueUI { position: absolute; bottom: 0; left: 0; width: 100%; padding: 20px; background: linear-gradient(to top, rgba(0,0,0,0.9), transparent); pointer-events: auto; display: flex; flex-direction: column; align-items: center; }
-        .dlg-box { max-width: 600px; background: rgba(10, 16, 32, 0.95); border: 1px solid var(--c-text); padding: 15px; border-radius: 4px; position: relative; }
-        .dlg-name { color: var(--c-accent); font-weight: bold; margin-bottom: 5px; font-family: var(--font-mono); font-size: 0.9rem; }
-        .dlg-text { font-size: 1rem; line-height: 1.4; color: #eee; }
-        .dlg-next { position: absolute; bottom: 10px; right: 15px; animation: blink 1s infinite; cursor: pointer; color: var(--c-text); font-size: 0.8rem; }
+        /* DIALOGUE §24 - New plaque system */
+        #dialogueUI { 
+            position: absolute; 
+            bottom: 0; 
+            left: 0; 
+            width: 100%; 
+            padding: 0; 
+            pointer-events: auto; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;
+            justify-content: flex-end;
+        }
+        .dlg-plaque { 
+            width: 100%; 
+            max-width: 700px; 
+            background: linear-gradient(to top, rgba(10, 16, 32, 0.98), rgba(26, 36, 54, 0.9)); 
+            border-top: 2px solid var(--c-amber);
+            border-left: 1px solid rgba(255, 179, 71, 0.3);
+            border-right: 1px solid rgba(255, 179, 71, 0.3);
+            padding: 20px 25px; 
+            margin: 0 20px 20px 20px;
+            border-radius: 4px 4px 0 0;
+            position: relative;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
+        }
+        .dlg-plaque::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--c-amber), transparent);
+            opacity: 0.5;
+        }
+        .dlg-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+        .dlg-portrait {
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 179, 71, 0.1);
+            border: 1px solid var(--c-amber);
+            border-radius: 4px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+        }
+        .dlg-name { 
+            color: var(--c-amber); 
+            font-weight: bold; 
+            font-family: var(--font-mono); 
+            font-size: 0.95rem; 
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        .dlg-role {
+            color: var(--c-steel);
+            font-size: 0.7rem;
+            font-family: var(--font-mono);
+            opacity: 0.7;
+        }
+        .dlg-text { 
+            font-size: 1.05rem; 
+            line-height: 1.6; 
+            color: #e8e8e8; 
+        }
+        .dlg-thought .dlg-text {
+            font-style: italic;
+            color: var(--c-amber-warm);
+            position: relative;
+            padding: 0 20px;
+        }
+        .dlg-thought .dlg-text::before,
+        .dlg-thought .dlg-text::after {
+            content: '—';
+            position: absolute;
+            color: var(--c-steel);
+            opacity: 0.5;
+        }
+        .dlg-thought .dlg-text::before { left: 0; }
+        .dlg-thought .dlg-text::after { right: 0; }
+        .dlg-ether {
+            border-color: var(--c-cyan);
+        }
+        .dlg-ether .dlg-name {
+            color: var(--c-cyan);
+        }
+        .dlg-ether .dlg-portrait {
+            border-color: var(--c-cyan);
+            background: rgba(127, 216, 232, 0.1);
+        }
+        .dlg-next { 
+            position: absolute; 
+            bottom: 15px; 
+            right: 25px; 
+            animation: blink 1.5s infinite; 
+            cursor: pointer; 
+            color: var(--c-amber); 
+            font-size: 0.75rem; 
+            font-family: var(--font-mono);
+            letter-spacing: 2px;
+            opacity: 0.8;
+        }
+        .dlg-next:hover { opacity: 1; }
 
         /* ERROR OVERLAY */
-        #errorOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #500; color: #fff; z-index: 9999; padding: 20px; font-family: monospace; overflow: auto; display: none; }
+        #errorOverlay { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: #500; 
+            color: #fff; 
+            z-index: 9999; 
+            padding: 20px; 
+            font-family: monospace; 
+            overflow: auto; 
+            display: none; 
+        }
         
-        @keyframes blink { 50% { opacity: 0; } }
+        @keyframes blink { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+        @keyframes pulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
         
         /* HUB SPECIFIC */
-        .hub-hint { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.5); font-size: 0.9rem; pointer-events: none; }
+        .hub-hint { 
+            position: absolute; 
+            top: 50%; 
+            left: 50%; 
+            transform: translate(-50%, -50%); 
+            color: rgba(255, 179, 71, 0.4); 
+            font-size: 0.9rem; 
+            pointer-events: none; 
+            font-family: var(--font-mono);
+            letter-spacing: 1px;
+        }
+        
+        /* POST-PROCESSING OVERLAY §29 */
+        #postProcess {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            mix-blend-mode: overlay;
+            opacity: 0.15;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+        }
+        #vignette {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background: radial-gradient(ellipse at center, transparent 40%, rgba(10, 16, 32, 0.6) 80%, rgba(10, 16, 32, 0.9) 100%);
+        }
     </style>
 </head>
 <body>
@@ -68,13 +353,24 @@
 <!-- CANVAS -->
 <canvas id="gameCanvas"></canvas>
 
+<!-- POST-PROCESSING OVERLAYS §29 -->
+<div id="vignette"></div>
+<div id="postProcess"></div>
+
 <!-- UI LAYERS -->
 <div id="menuUI" class="ui-layer">
+    <div class="menu-indicator">● ЭФИР · УЧАСТОК 4 · <span id="clockDisplay">00:00</span></div>
     <div class="logo">НОЧНАЯ СМЕНА</div>
-    <div class="subtitle">ГОРОД КОПОТЬ · УЧАСТОК 4</div>
-    <button class="btn" id="startBtn">НАЧАТЬ СМЕНУ</button>
-    <button class="btn" id="prologueBtn">ПРОЛОГ</button>
-    <div class="build-tag">BUILD 0.1.0</div>
+    <div class="subtitle">ГОРОД КОПОТЬ</div>
+    <div class="menu-desc">
+        В индустриальном городе, где свет был памятью, а тьма — забвением, 
+        последний фонарщик выходит ночью за топливом с лампой, которая одновременно 
+        оружие, глаз и истекающий таймер.
+    </div>
+    <button class="btn btn-primary" id="startBtn">▶ НАЧАТЬ СМЕНУ</button>
+    <button class="btn" id="prologueBtn">↻ ПРОЛОГ</button>
+    <button class="btn" id="howToPlayBtn">? КАК ИГРАТЬ</button>
+    <div class="build-tag">BUILD 0.2.0</div>
 </div>
 
 <div id="introUI" class="ui-layer hidden">
@@ -106,8 +402,14 @@
 </div>
 
 <div id="dialogueUI" class="hidden">
-    <div class="dlg-box">
-        <div class="dlg-name" id="dlgName">???</div>
+    <div class="dlg-plaque" id="dlgPlaque">
+        <div class="dlg-header">
+            <div class="dlg-portrait" id="dlgPortrait">💡</div>
+            <div>
+                <div class="dlg-name" id="dlgName">???</div>
+                <div class="dlg-role" id="dlgRole"></div>
+            </div>
+        </div>
         <div class="dlg-text" id="dlgText">...</div>
         <div class="dlg-next" id="dlgNext">[ДАЛЕЕ]</div>
     </div>
@@ -117,8 +419,9 @@
 
 <script>
 /**
- * НОЧНАЯ СМЕНА · BUILD 0.1
+ * НОЧНАЯ СМЕНА · BUILD 0.2.0
  * МОДУЛЬНАЯ СТРУКТУРА ВНУТРИ ОДНОГО ФАЙЛА
+ * Улучшения: палитра §27, визуал класса A §29, UI §24/§34, aim-assist §10
  */
 
 // --- GLOBAL CONSTANTS & STATE ---
@@ -128,30 +431,49 @@ const G = {
     ctx: null,
     lastTime: 0,
     assets: {}, // Placeholder for future sprites
-    build: "0.1.0"
+    build: "0.2.0",
+    particles: [] // Global particle system for motes, sparks, etc.
 };
 
-const C = { // Colors
+const C = { // Colors §27
     bg: '#0a1020',
+    darkBase: '#1a2436',
+    darkDeep: '#0a1020',
+    shadowViolet: '#2a1c3a',
     amber: '#ffb347',
+    amberWarm: '#ffcf8a',
     fire: '#ff7a3d',
+    lampCore: '#fff3d6',
     steel: '#5aa7c7',
-    dark: '#1a2436',
+    cyan: '#7fd8e8',
     hp: '#e05548',
     white: '#fff3d6'
 };
 
-const S = { // Game State Data
+const S = { // Game State Data §17 - Base stats
     hp: 100, maxHp: 100,
     fuel: 100, maxFuel: 100,
-    lightRadius: 150,
+    lightRadius: 70, // Base from §17
+    lightDPS: 22,
+    meleeDmg: 15,
+    speed: 70,
+    magnet: 24,
     lightIntensity: 1.0,
     burst: false,
-    player: { x: 0, y: 0, angle: 0, speed: 150 },
+    player: { x: 0, y: 0, angle: 0, speed: 70 },
     camera: { x: 0, y: 0 },
     enemies: [],
     particles: [],
-    input: { x: 0, y: 0, active: false, aimX: 0, aimY: 0 }
+    input: { x: 0, y: 0, active: false, aimX: 0, aimY: 0 },
+    // Upgrades (placeholder for future)
+    upgrades: {
+        radius: 0,
+        tank: 0,
+        focus: 0,
+        pipe: 0
+    },
+    // Perks (placeholder)
+    perks: {}
 };
 
 // --- MODULE: UTILS ---
@@ -235,11 +557,48 @@ const Input = {
         }
     },
 
-    updateAim(x, y) {
+    updateAim(x, y, dt = 0) {
         // Calculate angle from center screen to touch/mouse
         const cx = G.width / 2;
         const cy = G.height / 2;
-        S.player.angle = Math.atan2(y - cy, x - cx);
+        const targetAngle = Math.atan2(y - cy, x - cx);
+        
+        // §10 Aim-assist: soft turn towards enemies in cone
+        if (G.state === 'sortie' && dt > 0) {
+            const assistStrength = 0.35; // Base assist (can be upgraded to 0.75 max)
+            const searchCone = 0.5; // ±~28°
+            
+            // Find nearest enemy in cone
+            let bestEnemy = null;
+            let bestDist = Infinity;
+            
+            for (const e of S.enemies) {
+                const dx = e.x - S.player.x;
+                const dy = e.y - S.player.y;
+                const dist = Math.hypot(dx, dy);
+                const angleToEnemy = Math.atan2(dy, dx);
+                
+                let angleDiff = angleToEnemy - S.player.angle;
+                while (angleDiff <= -Math.PI) angleDiff += Math.PI*2;
+                while (angleDiff > Math.PI) angleDiff -= Math.PI*2;
+                
+                if (Math.abs(angleDiff) < searchCone && dist < bestDist && dist < S.lightRadius * 1.5) {
+                    bestDist = dist;
+                    bestEnemy = angleToEnemy;
+                }
+            }
+            
+            // Soft lerp towards enemy if found
+            if (bestEnemy !== null) {
+                let angleDiff = bestEnemy - S.player.angle;
+                while (angleDiff <= -Math.PI) angleDiff += Math.PI*2;
+                while (angleDiff > Math.PI) angleDiff -= Math.PI*2;
+                
+                S.player.angle += angleDiff * assistStrength * dt * 3;
+            }
+        }
+        
+        S.player.angle = targetAngle;
     },
 
     getAxis() {
@@ -260,7 +619,7 @@ const Input = {
     }
 };
 
-// --- MODULE: UI MANAGER ---
+// --- MODULE: UI MANAGER §34 ---
 const UI = {
     els: {},
     init() {
@@ -271,7 +630,10 @@ const UI = {
             sortie: document.getElementById('sortieUI'),
             end: document.getElementById('endUI'),
             dialogue: document.getElementById('dialogueUI'),
+            dlgPlaque: document.getElementById('dlgPlaque'),
+            dlgPortrait: document.getElementById('dlgPortrait'),
             dlgName: document.getElementById('dlgName'),
+            dlgRole: document.getElementById('dlgRole'),
             dlgText: document.getElementById('dlgText'),
             hpBar: document.getElementById('hpBar'),
             fuelBar: document.getElementById('fuelBar')
@@ -283,6 +645,15 @@ const UI = {
         document.getElementById('hubExitBtn').onclick = () => Sortie.start();
         document.getElementById('restartBtn').onclick = () => Hub.start();
         document.getElementById('dlgNext').onclick = () => Intro.next();
+        document.getElementById('howToPlayBtn').onclick = () => this.showHowToPlay();
+        
+        // Clock display
+        setInterval(() => {
+            const now = new Date();
+            const timeStr = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+            const clockEl = document.getElementById('clockDisplay');
+            if (clockEl) clockEl.textContent = timeStr;
+        }, 1000);
         
         this.set('menu');
     },
@@ -296,11 +667,51 @@ const UI = {
         U.log(`State -> ${state}`);
     },
 
-    showDialog(name, text, cb) {
+    showDialog(name, text, cb, type = 'normal', role = '') {
         this.els.dlgName.innerText = name;
         this.els.dlgText.innerText = text;
+        this.els.dlgRole.innerText = role;
+        
+        // Set portrait emoji based on name/type
+        let portrait = '💡';
+        if (name === 'Дарья' || name === 'ДАРЬЯ') portrait = '🔧';
+        else if (name === 'Света' || name === 'СВЕТА') portrait = '🎨';
+        else if (name === 'Радист' || name === 'РАДИСТ') portrait = '📻';
+        else if (name === 'ТИХОН' || name === 'Тихон') portrait = '👤';
+        else if (type === 'thought') portrait = '💭';
+        else if (type === 'ether') portrait = '📡';
+        
+        this.els.dlgPortrait.textContent = portrait;
+        
+        // Set plaque type
+        this.els.dlgPlaque.className = 'dlg-plaque';
+        if (type === 'thought') this.els.dlgPlaque.classList.add('dlg-thought');
+        else if (type === 'ether') this.els.dlgPlaque.classList.add('dlg-ether');
+        
         this.els.dialogue.classList.remove('hidden');
         this.dialogueCb = cb;
+    },
+    
+    showHowToPlay() {
+        const lines = [
+            { name: '', text: 'УПРАВЛЕНИЕ:', type: 'thought' },
+            { name: '', text: 'ПК: WASD — движение, мышь — свет, ЛКМ — ЯРЧЕ', type: 'normal' },
+            { name: '', text: 'Мобайл: левая зона — стик движения, правая — прицел, кнопка — ЯРЧЕ', type: 'normal' },
+            { name: '', text: 'Свет — это оружие, обзор и ресурс одновременно.', type: 'thought' },
+            { name: '', text: 'Держи врагов в конусе света, чтобы наносить урон.', type: 'normal' },
+            { name: '', text: 'Следи за топливом — без света ты беспомощен.', type: 'normal' }
+        ];
+        
+        let idx = 0;
+        const showLine = () => {
+            if (idx >= lines.length) {
+                this.hideDialog();
+                return;
+            }
+            const line = lines[idx];
+            this.showDialog(line.name, line.text, () => { idx++; showLine(); }, line.type || 'normal');
+        };
+        showLine();
     },
 
     hideDialog() {
@@ -314,46 +725,129 @@ const UI = {
     }
 };
 
-// --- MODULE: SPRITES (Procedural) ---
+// --- MODULE: SPRITES (Procedural) §29 Class A visuals ---
 const Sprites = {
     drawPlayer(ctx, x, y, angle) {
         ctx.save();
         ctx.translate(x, y);
         ctx.rotate(angle);
-        // Body
-        ctx.fillStyle = '#334';
-        ctx.fillRect(-6, -6, 12, 12);
-        // Cloak
-        ctx.fillStyle = '#2a2a3a';
+        
+        // §29: Rim-light, shadow cast, breathing animation
+        const breathe = Math.sin(Date.now() / 300) * 1;
+        
+        // Shadow cast (behind player)
+        ctx.fillStyle = 'rgba(10, 16, 32, 0.5)';
         ctx.beginPath();
-        ctx.moveTo(-4, 0); ctx.lineTo(-10, 8); ctx.lineTo(10, 8); ctx.lineTo(4, 0);
+        ctx.ellipse(-8, 8 + breathe, 8, 4, 0, 0, Math.PI*2);
         ctx.fill();
-        // Lamp
-        ctx.fillStyle = C.amber;
-        ctx.beginPath(); ctx.arc(6, 0, 3, 0, Math.PI*2); ctx.fill();
+        
+        // Body (coat)
+        ctx.fillStyle = '#2a2a3a';
+        ctx.fillRect(-6, -6 + breathe, 12, 12);
+        
+        // Cloak with physics sway
+        ctx.fillStyle = '#1f2330';
+        ctx.beginPath();
+        ctx.moveTo(-4, 0 + breathe);
+        ctx.lineTo(-12, 10 + breathe);
+        ctx.lineTo(12, 10 + breathe);
+        ctx.lineTo(4, 0 + breathe);
+        ctx.fill();
+        
+        // Backpack (fuel tank)
+        ctx.fillStyle = '#3a4050';
+        ctx.fillRect(-10, -4 + breathe, 6, 8);
+        
+        // Lamp (glowing core)
+        ctx.fillStyle = C.lampCore;
+        ctx.shadowColor = C.amber;
+        ctx.shadowBlur = 10;
+        ctx.beginPath();
+        ctx.arc(6, 0 + breathe, 4, 0, Math.PI*2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        
+        // Rim light (from lamp direction)
+        ctx.strokeStyle = C.amberWarm;
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.5;
+        ctx.beginPath();
+        ctx.arc(0, breathe, 8, -0.5, 0.5);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        
         ctx.restore();
     },
     
     drawEnemy(ctx, e) {
         ctx.save();
         ctx.translate(e.x, e.y);
-        // Glow eyes if in dark (simple logic: always draw eyes)
-        ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.arc(-2, -2, 1.5, 0, Math.PI*2); ctx.fill();
-        ctx.beginPath(); ctx.arc(2, -2, 1.5, 0, Math.PI*2); ctx.fill();
         
-        // Body (Placeholder until assets)
-        ctx.fillStyle = e.type === 'smol' ? '#556' : '#433';
-        ctx.beginPath();
-        ctx.arc(0, 0, e.radius, 0, Math.PI*2);
-        ctx.fill();
+        // Breathing animation
+        const breathe = Math.sin(Date.now() / 400 + e.x) * 1;
+        
+        // Check if in light (for visibility effect)
+        const inLight = Light.checkVisibility(e);
+        
+        // Only show full body in light, otherwise just eyes
+        if (!inLight) {
+            // Just glowing eyes in darkness
+            const eyeColor = e.type === 'warden' ? C.cyan : C.amber;
+            ctx.fillStyle = eyeColor;
+            ctx.shadowColor = eyeColor;
+            ctx.shadowBlur = 8;
+            
+            // Blinking effect
+            const blink = Math.sin(Date.now() / 200) > 0.3;
+            if (blink) {
+                ctx.beginPath(); ctx.arc(-3, -2 + breathe, 2, 0, Math.PI*2); ctx.fill();
+                ctx.beginPath(); ctx.arc(3, -2 + breathe, 2, 0, Math.PI*2); ctx.fill();
+            }
+            ctx.shadowBlur = 0;
+        } else {
+            // Full body visible in light
+            // Body color based on type (§7)
+            let bodyColor = '#556';
+            if (e.type === 'hound') bodyColor = '#4a4';
+            else if (e.type === 'moth') bodyColor = '#656';
+            else if (e.type === 'boil') bodyColor = '#433';
+            else if (e.type === 'warden') bodyColor = '#324';
+            
+            ctx.fillStyle = bodyColor;
+            
+            // Glow outline when in light
+            ctx.shadowColor = C.amber;
+            ctx.shadowBlur = 10;
+            
+            ctx.beginPath();
+            ctx.arc(0, 0 + breathe, e.radius, 0, Math.PI*2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            
+            // Eyes (glowing)
+            const eyeColor = e.type === 'warden' ? C.cyan : C.amber;
+            ctx.fillStyle = eyeColor;
+            ctx.beginPath(); ctx.arc(-3, -3 + breathe, 2, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(3, -3 + breathe, 2, 0, Math.PI*2); ctx.fill();
+            
+            // Cracks/glow for Tleющий
+            if (e.type === 'smol') {
+                ctx.fillStyle = C.fire;
+                ctx.globalAlpha = 0.6 + Math.sin(Date.now()/100)*0.2;
+                ctx.beginPath();
+                ctx.arc(-2, 2+breathe, 2, 0, Math.PI*2);
+                ctx.arc(3, 1+breathe, 1.5, 0, Math.PI*2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
         
         // Health bar
         if (e.hp < e.maxHp) {
-            ctx.fillStyle = 'red';
-            ctx.fillRect(-10, -15, 20, 3);
-            ctx.fillStyle = '#0f0';
-            ctx.fillRect(-10, -15, 20 * (e.hp/e.maxHp), 3);
+            ctx.fillStyle = 'rgba(0,0,0,0.7)';
+            ctx.fillRect(-12, -22, 24, 4);
+            ctx.fillStyle = e.hp > e.maxHp*0.5 ? '#4f4' : '#f44';
+            ctx.fillRect(-11, -21, 22 * (e.hp/e.maxHp), 2);
         }
         ctx.restore();
     }
@@ -504,14 +998,35 @@ const Sortie = {
                 e.y -= Math.sin(angle) * 50 * dt;
                 
                 if (e.hp <= 0) {
+                    // §33 "Вспомнить" - flash on death in light
+                    this.createRememberFlash(e.x, e.y);
                     S.enemies.splice(idx, 1);
                     this.spawnEnemy(); // Respawn to keep pressure
-                    // Add particle effect here later
                 }
             }
         });
         
+        // Update particles
+        Particles.update(dt);
+        
         UI.updateHUD();
+    },
+    
+    createRememberFlash(x, y) {
+        // Create a "remember" particle burst (§33)
+        for (let i = 0; i < 8; i++) {
+            G.particles.push({
+                x: x,
+                y: y,
+                vx: (Math.random() - 0.5) * 100,
+                vy: (Math.random() - 0.5) * 100,
+                life: 0.6,
+                maxLife: 0.6,
+                size: 2 + Math.random() * 3,
+                color: C.lampCore,
+                type: 'remember'
+            });
+        }
     },
     
     render() {
@@ -545,10 +1060,104 @@ const Sortie = {
             }
         });
         
+        // Draw particles (§29 взвесь, искры)
+        Particles.render(ctx, S.camera);
+        
         ctx.restore();
         
         // Apply Light/Fog
         Light.render(ctx);
+    }
+};
+
+// --- MODULE: PARTICLES §29 Class A visuals ---
+const Particles = {
+    update(dt) {
+        // Update global particles (motes, sparks, remember flashes)
+        for (let i = G.particles.length - 1; i >= 0; i--) {
+            const p = G.particles[i];
+            p.x += p.vx * dt;
+            p.y += p.vy * dt;
+            p.life -= dt;
+            
+            // Gravity for some types
+            if (p.type === 'spark') {
+                p.vy += 50 * dt;
+            }
+            
+            if (p.life <= 0) {
+                G.particles.splice(i, 1);
+            }
+        }
+        
+        // Spawn ambient motes in light beams (§29)
+        if (G.state === 'sortie' && Math.random() < 0.3) {
+            const angle = S.player.angle + (Math.random() - 0.5) * 0.5;
+            const dist = 30 + Math.random() * 50;
+            G.particles.push({
+                x: S.player.x + Math.cos(angle) * dist,
+                y: S.player.y + Math.sin(angle) * dist,
+                vx: (Math.random() - 0.5) * 10,
+                vy: (Math.random() - 0.5) * 10 - 5, // Float up slightly
+                life: 1 + Math.random(),
+                maxLife: 1.5,
+                size: 0.5 + Math.random(),
+                color: C.lampCore,
+                type: 'mote'
+            });
+        }
+    },
+    
+    render(ctx, camera) {
+        const px = G.width/2 - camera.x;
+        const py = G.height/2 - camera.y;
+        
+        for (const p of G.particles) {
+            const sx = px + (p.x - S.player.x);
+            const sy = py + (p.y - S.player.y);
+            
+            // Only draw if on screen
+            if (sx < -10 || sx > G.width+10 || sy < -10 || sy > G.height+10) continue;
+            
+            const alpha = p.life / p.maxLife;
+            
+            if (p.type === 'remember') {
+                // Flash effect for "Вспомнить"
+                ctx.fillStyle = `rgba(255, 243, 214, ${alpha})`;
+                ctx.shadowColor = C.amber;
+                ctx.shadowBlur = 10 * alpha;
+                ctx.beginPath();
+                ctx.arc(sx, sy, p.size * (p.life / p.maxLife + 0.5), 0, Math.PI*2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            } else if (p.type === 'mote') {
+                // Dust motes in light beam
+                ctx.fillStyle = `rgba(255, 207, 138, ${alpha * 0.6})`;
+                ctx.beginPath();
+                ctx.arc(sx, sy, p.size, 0, Math.PI*2);
+                ctx.fill();
+            } else if (p.type === 'spark') {
+                // Sparks from boiler/enemies
+                ctx.fillStyle = `rgba(255, 122, 61, ${alpha})`;
+                ctx.fillRect(sx, sy, 2, 2);
+            }
+        }
+    },
+    
+    spawnSparks(x, y, count = 5) {
+        for (let i = 0; i < count; i++) {
+            G.particles.push({
+                x: x,
+                y: y,
+                vx: (Math.random() - 0.5) * 150,
+                vy: (Math.random() - 0.5) * 150 - 50,
+                life: 0.3 + Math.random() * 0.3,
+                maxLife: 0.6,
+                size: 1 + Math.random(),
+                color: C.fire,
+                type: 'spark'
+            });
+        }
     }
 };
 
@@ -682,11 +1291,23 @@ const Render = {
             G.ctx.clearRect(0, 0, G.width, G.height);
             
             // Update & Render based on State
-            if (G.state === 'hub') { Hub.update(dt); Hub.render(); }
-            else if (G.state === 'sortie') { Sortie.update(dt); Sortie.render(); }
+            if (G.state === 'hub') { 
+                Hub.update(dt); 
+                Hub.render(); 
+            }
+            else if (G.state === 'sortie') { 
+                Sortie.update(dt); 
+                Sortie.render(); 
+            }
             else if (G.state === 'menu') {
                 // Static menu bg animation could go here
-                G.ctx.fillStyle = '#0a1020'; G.ctx.fillRect(0,0,G.width,G.height);
+                G.ctx.fillStyle = '#0a1020'; 
+                G.ctx.fillRect(0,0,G.width,G.height);
+            }
+            else if (G.state === 'intro') {
+                // Just show dialogue overlay
+                G.ctx.fillStyle = '#0a1020'; 
+                G.ctx.fillRect(0,0,G.width,G.height);
             }
             
         } catch (e) {
